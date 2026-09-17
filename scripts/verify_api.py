@@ -5,12 +5,14 @@ Not part of the pytest suite — this hits a real uvicorn instance over HTTP.
 
 from __future__ import annotations
 
-import json
+import os
 from datetime import datetime, timedelta
 
 import httpx
 
-BASE = "http://127.0.0.1:8787"
+# Override to point the suite at another instance, e.g. a container:
+#   TIME_TRACKER_BASE_URL=http://127.0.0.1:8788 .venv/bin/python scripts/verify_api.py
+BASE = os.environ.get("TIME_TRACKER_BASE_URL", "http://127.0.0.1:8787")
 ok = 0
 fail = 0
 
@@ -43,12 +45,15 @@ print(f"  cleared -> entry_count={c.get('/api/health').json()['entry_count']}")
 tz = c.get("/api/config").json()["timezone"]
 print(f"  server timezone: {tz}")
 
-# Local "now" on the server, used to build realistic local wall-clock times.
+# The server's "today", used to build realistic local wall-clock times.
 today = datetime.now().date()
-local_noon = lambda d, h, m, dur_min: (  # noqa: E731
-    datetime(d.year, d.month, d.day, h, m),
-    datetime(d.year, d.month, d.day, h, m) + timedelta(minutes=dur_min),
-)
+
+
+def slot(day, hour, minute, minutes_long):  # noqa: ANN001, ANN201
+    """(start, end) as naive local datetimes on ``day``."""
+    start = datetime(day.year, day.month, day.day, hour, minute)
+    return start, start + timedelta(minutes=minutes_long)
+
 
 print()
 print("=" * 74)
@@ -63,7 +68,7 @@ seed = [
 ]
 created = []
 for d, h, m, dur, note in seed:
-    s, e = local_noon(d, h, m, dur)
+    s, e = slot(d, h, m, dur)
     r = c.post("/api/entries", json={"start_at": iso(s), "end_at": iso(e), "note": note})
     if r.status_code != 201:
         print(f"  FAIL  create {note!r}: {r.status_code} {r.text}")
@@ -78,17 +83,17 @@ print()
 print("=" * 74)
 print(" 2. validation")
 print("=" * 74)
-s, e = local_noon(today, 18, 0, -60)  # end before start
+s, e = slot(today, 18, 0, -60)  # end before start
 r = c.post("/api/entries", json={"start_at": iso(s), "end_at": iso(e), "note": "backwards"})
 check("end<start -> 422", r.status_code == 422, f"got {r.status_code}")
 print(f"        detail: {r.json().get('detail')}")
 
-s, e = local_noon(today, 12, 0, 30)  # overlaps the 11:00-13:30 entry
+s, e = slot(today, 12, 0, 30)  # overlaps the 11:00-13:30 entry
 r = c.post("/api/entries", json={"start_at": iso(s), "end_at": iso(e), "note": "clash"})
 check("overlap -> 409", r.status_code == 409, f"got {r.status_code}")
 print(f"        detail: {r.json().get('detail')}")
 
-s, e = local_noon(today, 13, 30, 30)  # touches the previous entry exactly
+s, e = slot(today, 13, 30, 30)  # touches the previous entry exactly
 r = c.post("/api/entries", json={"start_at": iso(s), "end_at": iso(e), "note": "adjacent"})
 check("adjacent (13:30) -> 201", r.status_code == 201, f"got {r.status_code}")
 adjacent_id = r.json()["id"] if r.status_code == 201 else None

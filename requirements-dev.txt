@@ -1,0 +1,6 @@
+# Development / test dependencies. Never installed into the Docker image.
+-r requirements.txt
+
+pytest==8.3.4
+# httpx powers both the TestClient suite and scripts/verify_api.py
+httpx==0.28.1

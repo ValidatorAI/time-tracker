@@ -1,3 +1,4 @@
+# Runtime dependencies — this file is what the Docker image installs.
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 sqlalchemy==2.0.36
@@ -5,6 +6,7 @@ pydantic==2.10.4
 pydantic-settings==2.7.0
 python-dotenv==1.0.1
 
-# dev / test
-pytest==8.3.4
-httpx==0.28.1
+# IANA timezone database. Debian-based python images ship one, but pulling the
+# PyPI copy makes TIME_TRACKER_TIMEZONE work on any base image and any host
+# distro without tzdata — otherwise ZoneInfo() fails at startup.
+tzdata==2024.2

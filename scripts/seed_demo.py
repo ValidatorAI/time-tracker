@@ -9,6 +9,7 @@ Entries are relative to *today* so the day-grouped view always looks alive.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -17,7 +18,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import httpx  # noqa: E402
 
-BASE = "http://127.0.0.1:8787"
+# Override to seed another instance, e.g. a container on a different port:
+#   TIME_TRACKER_BASE_URL=http://127.0.0.1:8788 .venv/bin/python scripts/seed_demo.py
+BASE = os.environ.get("TIME_TRACKER_BASE_URL", "http://127.0.0.1:8787")
 
 # (days_ago, start HH:MM, duration in minutes, note)
 PLAN: list[tuple[int, int, int, int, str]] = [

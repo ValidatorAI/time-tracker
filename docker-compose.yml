@@ -1,0 +1,64 @@
+# ---------------------------------------------------------------------------
+#  Time Tracker — container stack
+#
+#    docker compose up -d --build      start (builds on first run)
+#    docker compose logs -f            follow logs
+#    docker compose down               stop (the volume keeps your data)
+#
+#  Only the timezone is interpolated from a local .env if you have one; the
+#  database path is deliberately pinned to the container-side volume so a
+#  host path in .env can never leak in.
+# ---------------------------------------------------------------------------
+services:
+  time-tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Build-time only. `network: host` lets the build reach a proxy bound to
+      # the host's 127.0.0.1 (e.g. xray on 10808) — a proxy on localhost is not
+      # reachable from the default build bridge. The args are interpolated from
+      # whatever proxy the caller already has exported, so an environment with
+      # direct PyPI access builds fine without any of this.
+      network: host
+      args:
+        http_proxy: ${http_proxy:-}
+        https_proxy: ${https_proxy:-}
+        no_proxy: ${no_proxy:-}
+    image: time-tracker:1.0.0
+    container_name: time-tracker
+    restart: unless-stopped
+
+    ports:
+      # host:container — change the left side if 8787 is taken
+      - "8787:8787"
+
+    environment:
+      TIME_TRACKER_ENV: prod
+      TIME_TRACKER_HOST: 0.0.0.0
+      TIME_TRACKER_PORT: "8787"
+      TIME_TRACKER_DB_PATH: /data/time_tracker.db
+      TIME_TRACKER_LOG_LEVEL: info
+
+      # Critical: the container has no /etc/localtime of yours, so day
+      # grouping would fall back to UTC. Set your IANA zone here.
+      TIME_TRACKER_TIMEZONE: ${TIME_TRACKER_TIMEZONE:-Asia/Tehran}
+
+      # false => overlapping entries are rejected with HTTP 409
+      TIME_TRACKER_ALLOW_OVERLAP: "false"
+      TIME_TRACKER_MAX_NOTE_LENGTH: "2000"
+
+    volumes:
+      # Named volume => survives `docker compose down` and is owned by the
+      # image's non-root user, so SQLite can write to it.
+      - time-tracker-data:/data
+
+    # No healthcheck block on purpose: the image already defines one against
+    # /api/health, and `docker compose ps` reports it. Restating it here would
+    # only be a second copy to keep in sync.
+
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  time-tracker-data:
+    name: time-tracker-data

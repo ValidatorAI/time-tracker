@@ -1,0 +1,52 @@
+# ---------------------------------------------------------------------------
+# Build context exclusions.
+#
+# The image is built from source, so local build artefacts, the developer
+# venv, the database and any real config are all kept out.
+# ---------------------------------------------------------------------------
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local database — never bake your data into an image
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Real config / secrets. .env.example is a documented template and is kept.
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Compiled CSS is produced inside the build (see the `css` stage), so the
+# checked-in copy is deliberately excluded to guarantee no stale stylesheet.
+static/css/
+
+# Dev-only files: not needed at runtime, keep the image lean
+tests/
+scripts/
+pytest.ini
+
+# VCS / editor / meta
+.git/
+.gitignore
+.github/
+*.swp
+.DS_Store
+
+# Docker meta (not needed in the context)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+README.md
