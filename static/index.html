@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Time Tracker</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>" />
+  <link rel="stylesheet" href="/css/tailwind.css?v=1.0.0" />
+</head>
+<body class="h-full bg-slate-100 text-slate-800 antialiased">
+
+  <!-- ══════════════ Header ══════════════ -->
+  <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <div class="flex items-center gap-3">
+        <div class="grid h-10 w-10 place-items-center rounded-xl bg-indigo-600 text-lg text-white shadow-sm">⏱</div>
+        <div>
+          <h1 class="text-lg font-semibold leading-tight tracking-tight">Time Tracker</h1>
+          <p class="text-xs text-slate-500">
+            <span id="tzLabel">…</span>
+            <span id="overlapNote" class="hidden"></span>
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnRefresh" type="button"
+                class="hidden rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 sm:block">
+          Refresh
+        </button>
+        <button id="btnNew" type="button"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+          <span class="text-base leading-none">＋</span> New entry
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+
+    <!-- ══════════════ Summary cards ══════════════ -->
+    <section class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Today</p>
+        <p id="statToday" class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">—</p>
+        <p id="statTodayCount" class="text-xs text-slate-500">—</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs font-medium uppercase tracking-wide text-slate-500">This week</p>
+        <p id="statWeek" class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">—</p>
+        <p id="statWeekCount" class="text-xs text-slate-500">—</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs font-medium uppercase tracking-wide text-slate-500">All time</p>
+        <p id="statAll" class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">—</p>
+        <p id="statAllCount" class="text-xs text-slate-500">—</p>
+      </div>
+    </section>
+
+    <!-- ══════════════ Filters ══════════════ -->
+    <section class="mt-5 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div class="flex flex-wrap items-end gap-3">
+        <label class="flex flex-col gap-1">
+          <span class="text-xs font-medium text-slate-600">From</span>
+          <input id="filterStart" type="date"
+                 class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs font-medium text-slate-600">To</span>
+          <input id="filterEnd" type="date"
+                 class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </label>
+        <label class="flex min-w-[10rem] flex-1 flex-col gap-1">
+          <span class="text-xs font-medium text-slate-600">Search note</span>
+          <input id="filterQ" type="search" placeholder="e.g. code review"
+                 class="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </label>
+        <div class="flex gap-2">
+          <button id="btnFilter" type="button"
+                  class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+            Apply
+          </button>
+          <button id="btnFilterClear" type="button"
+                  class="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 transition hover:text-slate-800">
+            Clear
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ Range total ══════════════ -->
+    <div id="rangeMeta" class="mt-5 flex items-center justify-between px-1 text-sm text-slate-600">
+      <span id="rangeTotal" class="font-medium text-slate-800"></span>
+      <span id="rangeCount" class="text-slate-500"></span>
+    </div>
+
+    <!-- ══════════════ Day-grouped list ══════════════ -->
+    <section id="days" class="mt-3 space-y-4"></section>
+
+    <!-- ══════════════ Empty / loading / error states ══════════════ -->
+    <div id="stateLoading" class="hidden rounded-xl border border-slate-200 bg-white p-10 text-center text-slate-500 shadow-sm">
+      <div class="mx-auto mb-3 h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600"></div>
+      Loading entries…
+    </div>
+
+    <div id="stateEmpty" class="hidden rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
+      <p class="text-3xl">🗓️</p>
+      <h2 class="mt-3 text-base font-semibold text-slate-800">No tracked time yet</h2>
+      <p class="mt-1 text-sm text-slate-500">Click “New entry” to log what you worked on.</p>
+      <button id="btnNewEmpty" type="button"
+              class="mt-5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+        Log your first entry
+      </button>
+    </div>
+
+    <div id="stateError" class="hidden rounded-xl border border-red-200 bg-red-50 p-5 shadow-sm">
+      <h2 class="text-sm font-semibold text-red-800">Could not load entries</h2>
+      <p id="stateErrorMsg" class="mt-1 text-sm text-red-700"></p>
+    </div>
+  </main>
+
+  <!-- ══════════════ Entry modal ══════════════ -->
+  <div id="modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="absolute inset-0 bg-slate-900/50" data-close="1"></div>
+
+    <div class="relative flex min-h-full items-center justify-center p-4">
+      <div class="w-full max-w-lg rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/5">
+        <form id="entryForm" novalidate>
+          <div class="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+            <div>
+              <h2 id="modalTitle" class="text-base font-semibold text-slate-900">New time entry</h2>
+              <p class="text-xs text-slate-500">Times are in <span id="modalTz">your local timezone</span>.</p>
+            </div>
+            <button type="button" data-close="1"
+                    class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    aria-label="Close">✕</button>
+          </div>
+
+          <div class="space-y-4 px-5 py-4">
+            <div id="formError" class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-slate-700">Start</span>
+                <input id="fStart" name="start_at" type="datetime-local" required
+                       class="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium text-slate-700">End</span>
+                <input id="fEnd" name="end_at" type="datetime-local" required
+                       class="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              </label>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" data-quick="last-hour"
+                      class="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50">Last hour</button>
+              <button type="button" data-quick="since-9"
+                      class="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50">Since 09:00</button>
+              <button type="button" data-quick="now-end"
+                      class="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50">End = now</button>
+              <span class="ml-auto rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold tabular-nums text-slate-700">
+                Duration: <span id="previewDuration">—</span>
+              </span>
+            </div>
+
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium text-slate-700">Note <span class="font-normal text-slate-400">(what did you work on?)</span></span>
+              <textarea id="fNote" name="note" rows="3" placeholder="e.g. Reviewed PR #142 and fixed the auth bug"
+                        class="resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
+              <span class="text-right text-xs text-slate-400"><span id="noteCount">0</span> chars</span>
+            </label>
+          </div>
+
+          <div class="flex items-center justify-between gap-3 rounded-b-2xl border-t border-slate-200 bg-slate-50 px-5 py-4">
+            <button type="button" data-close="1"
+                    class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+              Cancel
+            </button>
+            <button id="btnSave" type="submit"
+                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60">
+              Save entry
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ Delete confirm ══════════════ -->
+  <div id="confirmModal" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-slate-900/50" data-close-confirm="1"></div>
+    <div class="relative flex min-h-full items-center justify-center p-4">
+      <div class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-slate-900/5">
+        <h2 class="text-base font-semibold text-slate-900">Delete entry?</h2>
+        <p id="confirmText" class="mt-2 text-sm text-slate-600"></p>
+        <div class="mt-5 flex justify-end gap-2">
+          <button type="button" data-close-confirm="1"
+                  class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">Cancel</button>
+          <button id="btnConfirmDelete" type="button"
+                  class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ Toasts ══════════════ -->
+  <div id="toasts" class="pointer-events-none fixed bottom-4 right-4 z-[70] flex w-80 flex-col items-end gap-2"></div>
+
+  <!-- ══════════════ Row template ══════════════ -->
+  <script type="text/template" id="tplEntry">
+    <li class="group flex items-start gap-3 px-4 py-3 transition hover:bg-slate-50">
+      <div class="w-24 shrink-0 pt-0.5 font-mono text-xs tabular-nums text-slate-500">
+        <div class="text-slate-700" data-f="start"></div>
+        <div data-f="end"></div>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-sm text-slate-800" data-f="note"></p>
+        <p class="mt-0.5 text-xs text-slate-400" data-f="range"></p>
+      </div>
+      <span class="shrink-0 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold tabular-nums text-indigo-700" data-f="duration"></span>
+      <div class="flex shrink-0 gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+        <button type="button" data-act="edit" class="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700" title="Edit">✎</button>
+        <button type="button" data-act="delete" class="rounded p-1 text-slate-400 hover:bg-red-100 hover:text-red-600" title="Delete">🗑</button>
+      </div>
+    </li>
+  </script>
+
+  <script type="text/template" id="tplDay">
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+        <div class="flex items-baseline gap-2">
+          <h2 class="text-sm font-semibold text-slate-900" data-f="title"></h2>
+          <span class="text-xs text-slate-500" data-f="count"></span>
+        </div>
+        <span class="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold tabular-nums text-slate-700 ring-1 ring-slate-200" data-f="total"></span>
+      </div>
+      <ul class="divide-y divide-slate-100" data-f="list"></ul>
+    </div>
+  </script>
+
+  <script src="/vendor/jquery.min.js?v=1.0.0"></script>
+  <script src="/js/app.js?v=1.0.0"></script>
+</body>
+</html>

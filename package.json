@@ -1,0 +1,13 @@
+{
+  "name": "time-tracker-ui",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tailwind build tooling for the Time Tracker UI (the app itself is Python/FastAPI).",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/input.css -o ./static/css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./src/input.css -o ./static/css/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}
